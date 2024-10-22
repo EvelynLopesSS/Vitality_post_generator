@@ -51,7 +51,7 @@ def generate_instagram_post(image_file, user_input, chat_session=None):
 
 # Interface do Streamlit
 def main():
-    st.image('https://scontent.fjpa14-1.fna.fbcdn.net/v/t39.30808-1/463602236_122103882692567356_7885315810101220551_n.jpg?stp=c299.0.1449.1449a_dst-jpg_s200x200&_nc_cat=105&ccb=1-7&_nc_sid=f4b9fd&_nc_ohc=4ghor59T9voQ7kNvgGdpUay&_nc_zt=24&_nc_ht=scontent.fjpa14-1.fna&_nc_gid=A_J0r473NNOGBKSd7kR3mur&oh=00_AYCyx91Uu_EHKrNtiI80slmjEXex8ZfPQ9wgwtuOSxKJFA&oe=671DCD63', use_column_width=True)  # Substitua com a URL da imagem que deseja exibir
+    st.image('https://path_to_your_image', use_column_width=True)  # Substitua com a URL da imagem que deseja exibir
     st.header("📸 Gerar Post para Instagram - Vitality Núcleo ✨")
     st.write("""
         Esta ferramenta permite gerar automaticamente posts para o Instagram da clínica de estética. 
@@ -60,6 +60,10 @@ def main():
         - Descreva brevemente o post ou faça uma pergunta.
         A ferramenta irá criar um post com base nessas informações.
     """)
+
+    # Variável para armazenar o histórico da conversa na sessão do Streamlit
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
 
     uploaded_file = st.file_uploader("Envie uma imagem", type=["png", "jpg", "jpeg"])
     user_input = st.text_area("Descrição ou instruções para o post")
@@ -77,6 +81,11 @@ def main():
                 
                 # Gerar o post e iniciar a sessão de chat
                 post_text, chat_session = generate_instagram_post(image_path, user_input)
+                
+                # Atualizar o histórico com a resposta gerada
+                st.session_state.chat_history.append({"role": "user", "message": user_input})
+                st.session_state.chat_history.append({"role": "model", "message": post_text})
+
                 st.balloons()
                 st.subheader("Texto Gerado para o Post:")
                 st.write(post_text)
@@ -89,17 +98,39 @@ def main():
             else:
                 st.warning("Por favor, envie uma imagem e insira a descrição.")
     
+    # Exibir o histórico da conversa
+    if st.session_state.chat_history:
+        st.subheader("Histórico da Conversa:")
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "user":
+                st.write(f"**Você**: {msg['message']}")
+            else:
+                st.write(f"**Modelo**: {msg['message']}")
+    
     # Opção de pedir modificações
-    if chat_session:
+    if chat_session or st.session_state.chat_history:
         st.write("Caso queira ajustar o post, insira novos comandos abaixo:")
-        modification_request = st.text_area("Solicitação de Modificação")
+        modification_request = st.text_area("Solicitação de Modificação", key="modification_input")
         
         if st.button("Pedir Modificação"):
             with st.spinner('Gerando nova versão do post ...'):
                 if modification_request:
-                    post_text, chat_session = generate_instagram_post(image_path, modification_request, chat_session)
+                    # Adicionar a nova solicitação ao histórico
+                    st.session_state.chat_history.append({"role": "user", "message": modification_request})
+                    
+                    # Gerar uma nova resposta levando em conta o histórico anterior
+                    complete_history = [{"role": "user", "parts": [msg["message"]]} if msg["role"] == "user"
+                                        else {"role": "model", "parts": [msg["message"]]}
+                                        for msg in st.session_state.chat_history]
+                    
+                    chat_session = model.start_chat(history=complete_history)
+                    response = chat_session.send_message(modification_request)
+                    
+                    # Atualizar o histórico com a resposta gerada
+                    st.session_state.chat_history.append({"role": "model", "message": response.text})
+                    
                     st.subheader("Texto Modificado:")
-                    st.write(post_text)
+                    st.write(response.text)
                 else:
                     st.warning("Insira uma solicitação de modificação.")
                         

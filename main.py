@@ -24,12 +24,7 @@ generation_config = {
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     generation_config=generation_config,
-    system_instruction=(
-        "Você é uma agente de marketing digital da clinica de estética chamada Vitality Núcleo, "
-        "que fica em João Pessoa - PB. Seu trabalho é fazer posts para o Instagram, de acordo com "
-        "as instruções e imagens fornecidas pelo usuário. O post deve começar com uma frase de efeito, "
-        "usar hashtags apropriadas e sempre incluir #vitalitynucleo. O médico responsável é Dr. Elton Enéas "
-        "(Instagram: @elton_eneas)."
+    system_instruction=("Você é uma agente de marketing digital da clinica de estetica chamada Vitality Núcleo, que fica em joao pessoa - PB, seu trabalho é fazer o post do instagram, de acordo com a imagem e as instruções do usúario.\no post deve começar com uma fase de efeito, e devem ser usadas hashtags de acordo com o conteúdo a ser postado a hashtag do nome da clinica deve sempre aparecer em todos os posts #vitalitynucleo\no Responsável tecnico é o Doutor Elton Enéas, pode ser que ele apareça nas imagens, o @ do insta dele é @elton_eneas\n\nesse é um exemplo de post :\n\n✨ Botox Day na Vitality Núcleo: Rejuvenesça com Estilo! ✨\n\nPrepare-se para um dia especial de beleza e cuidado! No dia 26 de outubro de 2024, a Vitality Núcleo te presenteia com descontos incríveis de mais de 35% no tratamento com Botox! 😱\n\nDesfrute de um visual renovado e radiante com a aplicação de Botox, que suaviza linhas de expressão e te proporciona um aspecto mais jovem e natural. 💫\n\nAproveite essa oportunidade única e agende seu horário! 😉 \n\nLink na bio para WhatsApp. 📲\n#botoxday #botox #rejuvenescimento #belezanatural #promoção #desconto #joaopessoa #vitalitynucleo #esteticafacial #procedimentosesteticos"."
     ),
 )
 
@@ -73,10 +68,8 @@ def main():
         A ferramenta irá criar um post com base nessas informações.
     """)
 
-    # Layout geral: lado esquerdo (upload) e lado direito (chat)
-    col1, col2 = st.columns([1, 2])
-
-    with col1:
+    # Sidebar para upload de imagem
+    with st.sidebar:
         st.header("Upload de Imagem")
 
         # Upload de arquivo de imagem
@@ -87,55 +80,47 @@ def main():
             st.image(uploaded_image, caption="Prévia da Imagem", use_column_width=True)
             st.markdown("Imagem carregada com sucesso.")
 
-    with col2:
-        st.header("Instruções")
-        st.markdown("""
-        **Como usar esta aplicação:**
-        - Faça upload da imagem à esquerda.
-        - Digite uma mensagem no campo abaixo para conversar com o assistente.
-        """)
-        
-        # Exibir histórico de mensagens
-        for message in st.session_state.chat_history:
-            if message["role"] == "user":
-                # Estilo para mensagens do usuário
-                with st.chat_message("user"):
-                    st.markdown(f"🗣️ **Usuário**: {message['message']}")
-            else:
-                # Estilo para mensagens do assistente
-                with st.chat_message("assistant"):
-                    st.markdown(f"🤖 **Assistente**: {message['message']}")
-
-        # Entrada de mensagem do usuário
-        user_input = st.chat_input("Escreva sua mensagem:", key="user_input")
-
-        if user_input and uploaded_image:
-            # Salvar a imagem temporariamente
-            image_path = f"temp_{uploaded_image.name}"
-            with open(image_path, "wb") as f:
-                f.write(uploaded_image.getbuffer())
-
-            # Adicionar a mensagem do usuário ao histórico
-            user_message = {"role": "user", "message": user_input}
-            st.session_state.chat_history.append(user_message)
-            
+    # Exibir histórico de mensagens
+    for message in st.session_state.chat_history:
+        if message["role"] == "user":
+            # Estilo para mensagens do usuário
             with st.chat_message("user"):
-                st.markdown(f"🗣️ **Usuário**: {user_input}")
-            
-            # Resposta do assistente
+                st.markdown(f"🗣️ **Usuário**: {message['message']}")
+        else:
+            # Estilo para mensagens do assistente
             with st.chat_message("assistant"):
-                st.markdown("🤖 **Assistente**")
-                with st.spinner("O assistente está digitando..."):
-                    post_text, st.session_state.chat_session = generate_instagram_post(image_path, user_input, st.session_state.chat_session)
-                
-                st.markdown(post_text)
-            
-            # Adicionar a resposta do assistente ao histórico
-            assistant_message = {"role": "assistant", "message": post_text}
-            st.session_state.chat_history.append(assistant_message)
+                st.markdown(f"🤖 **Assistente**: {message['message']}")
 
-            # Remover arquivo temporário
-            Path(image_path).unlink()
+    # Entrada de mensagem do usuário no final
+    user_input = st.chat_input("Escreva sua mensagem:", key="user_input")
+
+    if user_input and uploaded_image:
+        # Salvar a imagem temporariamente
+        image_path = f"temp_{uploaded_image.name}"
+        with open(image_path, "wb") as f:
+            f.write(uploaded_image.getbuffer())
+
+        # Adicionar a mensagem do usuário ao histórico
+        user_message = {"role": "user", "message": user_input}
+        st.session_state.chat_history.append(user_message)
+        
+        with st.chat_message("user"):
+            st.markdown(f"🗣️ **Usuário**: {user_input}")
+        
+        # Resposta do assistente
+        with st.chat_message("assistant"):
+            st.markdown("🤖 **Assistente**")
+            with st.spinner("O assistente está digitando..."):
+                post_text, st.session_state.chat_session = generate_instagram_post(image_path, user_input, st.session_state.chat_session)
+            
+            st.markdown(post_text)
+        
+        # Adicionar a resposta do assistente ao histórico
+        assistant_message = {"role": "assistant", "message": post_text}
+        st.session_state.chat_history.append(assistant_message)
+
+        # Remover arquivo temporário
+        Path(image_path).unlink()
 
 if __name__ == '__main__':
     main()

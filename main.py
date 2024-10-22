@@ -58,7 +58,7 @@ if 'chat_session' not in st.session_state:
 
 # Interface do Streamlit
 def main():
-    st.image('https://scontent.fjpa14-1.fna.fbcdn.net/v/t39.30808-6/463742144_122103882962567356_4150893980006803591_n.jpg?stp=dst-jpg_s960x960&_nc_cat=102&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=kphI6UaQqb0Q7kNvgE4ebNB&_nc_zt=23&_nc_ht=scontent.fjpa14-1.fna&_nc_gid=A_J0r473NNOGBKSd7kR3mur&oh=00_AYAfU_SmMcK06TzBcZhESVu_u2Ndcqg6WYGhL-5nFkfIiQ&oe=671DB6DA', use_column_width=True)  # Substitua com a URL da imagem que deseja exibir
+    st.image('https://scontent.fjpa14-1.fna.fbcdn.net/v/t39.30808-6/463742144_122103882962567356_4150893980006803591_n.jpg?stp=dst-jpg_s960x960&_nc_cat=102&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=kphI6UaQqb0Q7kNvgE4ebNB&_nc_zt=23&_nc_ht=scontent.fjpa14-1.fna&_nc_gid=A_J0r473NNOGBKSd7kR3mur&oh=00_AYAfU_SmMcK06TzBcZhESVu_u2Ndcqg6WYGhL-5nFkfIiQ&oe=671DB6DA', use_column_width=True)
     st.header("📸 Gerar Post para Instagram - Vitality Núcleo ✨")
     st.write("""
         Esta ferramenta permite gerar automaticamente posts para o Instagram da clínica de estética. 
@@ -67,18 +67,6 @@ def main():
         - Descreva brevemente o post ou faça uma pergunta.
         A ferramenta irá criar um post com base nessas informações.
     """)
-
-    # Sidebar para upload de imagem
-    with st.sidebar:
-        st.header("Upload de Imagem")
-
-        # Upload de arquivo de imagem
-        uploaded_image = st.file_uploader("Escolha uma imagem", type=["jpg", "png", "jpeg"])
-        
-        # Exibir prévia da imagem
-        if uploaded_image:
-            st.image(uploaded_image, caption="Prévia da Imagem", use_column_width=True)
-            st.markdown("Imagem carregada com sucesso.")
 
     # Exibir histórico de mensagens
     for message in st.session_state.chat_history:
@@ -91,15 +79,21 @@ def main():
             with st.chat_message("assistant"):
                 st.markdown(f"🤖 **Assistente**: {message['message']}")
 
-    # Entrada de mensagem do usuário no final
-    user_input = st.chat_input("Escreva sua mensagem:", key="user_input")
-
-    if user_input and uploaded_image:
-        # Salvar a imagem temporariamente
+    # Upload de arquivo de imagem
+    uploaded_image = st.file_uploader("Escolha uma imagem", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+    
+    # Exibir prévia da imagem
+    if uploaded_image:
+        st.image(uploaded_image, caption="Prévia da Imagem", use_column_width=True)
+        st.markdown("Imagem carregada com sucesso.")
         image_path = f"temp_{uploaded_image.name}"
         with open(image_path, "wb") as f:
             f.write(uploaded_image.getbuffer())
 
+    # Entrada de mensagem do usuário no final
+    user_input = st.chat_input("Escreva sua mensagem (ou adicione uma imagem 🖇️):", key="user_input")
+
+    if user_input and uploaded_image:
         # Adicionar a mensagem do usuário ao histórico
         user_message = {"role": "user", "message": user_input}
         st.session_state.chat_history.append(user_message)
@@ -124,6 +118,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-

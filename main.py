@@ -111,8 +111,9 @@ def main():
             with st.spinner("O assistente está digitando..."):
                 post_text, st.session_state.chat_session = generate_instagram_post(image_path, user_input, st.session_state.chat_session)
 
-            #st.markdown(post_text)
-            st.text_area("Resposta do Assistente", value=post_text, height=200, key="response_text")
+            st.markdown(post_text)
+            st.markdown(f'<button onclick="copyToClipboard(`{post_text}`)">Copiar Resposta</button>', unsafe_allow_html=True)
+
 
 
         # Adicionar a resposta do assistente ao histórico
@@ -122,6 +123,22 @@ def main():
         # Remover arquivo temporário se existir
         if image_path:
             Path(image_path).unlink()
+            
+st.markdown(
+    """
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Texto copiado para a área de transferência!');
+            }, function(err) {
+                console.error('Erro ao copiar texto: ', err);
+            });
+        }
+    </script>
+    """,
+    unsafe_allow_html=True
+)
+         
 
 if __name__ == '__main__':
     main()

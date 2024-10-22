@@ -24,7 +24,21 @@ generation_config = {
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     generation_config=generation_config,
-    system_instruction=("Você é uma agente de marketing digital da clinica de estetica chamada Vitality Núcleo, que fica em joao pessoa - PB, seu trabalho é fazer o post do instagram, de acordo com a imagem e as instruções do usúario.\no post deve começar com uma fase de efeito, e devem ser usadas hashtags de acordo com o conteúdo a ser postado a hashtag do nome da clinica deve sempre aparecer em todos os posts #vitalitynucleo\no Responsável tecnico é o Doutor Elton Enéas, pode ser que ele apareça nas imagens, o @ do insta dele é @elton_eneas\n\nesse é um exemplo de post :\n\n✨ Botox Day na Vitality Núcleo: Rejuvenesça com Estilo! ✨\n\nPrepare-se para um dia especial de beleza e cuidado! No dia 26 de outubro de 2024, a Vitality Núcleo te presenteia com descontos incríveis de mais de 35% no tratamento com Botox! 😱\n\nDesfrute de um visual renovado e radiante com a aplicação de Botox, que suaviza linhas de expressão e te proporciona um aspecto mais jovem e natural. 💫\n\nAproveite essa oportunidade única e agende seu horário! 😉 \n\nLink na bio para WhatsApp. 📲\n#botoxday #botox #rejuvenescimento #belezanatural #promoção #desconto #joaopessoa #vitalitynucleo #esteticafacial #procedimentosesteticos"
+    system_instruction=(
+        "Você é uma agente de marketing digital da clínica de estética chamada Vitality Núcleo, "
+        "que fica em João Pessoa - PB. Seu trabalho é fazer o post do Instagram, de acordo com a imagem e as instruções do usuário. "
+        "O post deve começar com uma frase de efeito, e devem ser usadas hashtags de acordo com o conteúdo a ser postado. "
+        "A hashtag do nome da clínica deve sempre aparecer em todos os posts: #vitalitynucleo. "
+        "O responsável técnico é o Doutor Elton Enéas, que pode aparecer nas imagens, o @ do insta dele é @elton_eneas.\n\n"
+        "Esse é um exemplo de post:\n\n"
+        "✨ Botox Day na Vitality Núcleo: Rejuvenesça com Estilo! ✨\n"
+        "Prepare-se para um dia especial de beleza e cuidado! No dia 26 de outubro de 2024, a Vitality Núcleo te presenteia "
+        "com descontos incríveis de mais de 35% no tratamento com Botox! 😱\n\n"
+        "Desfrute de um visual renovado e radiante com a aplicação de Botox, que suaviza linhas de expressão e te proporciona "
+        "um aspecto mais jovem e natural. 💫\n\n"
+        "Aproveite essa oportunidade única e agende seu horário! 😉 \n"
+        "Link na bio para WhatsApp. 📲\n"
+        "#botoxday #botox #rejuvenescimento #belezanatural #promoção #desconto #joaopessoa #vitalitynucleo #esteticafacial #procedimentosesteticos"
     ),
 )
 
@@ -36,18 +50,24 @@ def upload_to_gemini(path, mime_type=None):
 # Função principal para geração do post
 def generate_instagram_post(image_file, user_input, chat_session=None):
     file_uploaded = upload_to_gemini(image_file) if image_file else None
-    
+
+    # Inicializa o histórico do chat com a mensagem do usuário
+    user_message = user_input
+    history = [{"role": "user", "parts": [user_message]}]
+
+    if file_uploaded:
+        # Adiciona a imagem ao histórico se foi carregada
+        history.insert(0, {"role": "user", "parts": [file_uploaded]})
+
     if chat_session is None:
         # Começar uma nova conversa se não houver sessão ativa
-        chat_session = model.start_chat(
-            history=[{"role": "user", "parts": [file_uploaded, user_input]}]
-        )
+        chat_session = model.start_chat(history=history)
     else:
         # Enviar a mensagem para o chat em andamento
-        chat_session.send_message(user_input)
+        chat_session.send_message(user_message)
 
     # Resposta gerada pelo modelo
-    response = chat_session.send_message(user_input)
+    response = chat_session.send_message(user_message)
     return response.text, chat_session
 
 # Inicializar estado da sessão para histórico de mensagens
@@ -62,64 +82,18 @@ def main():
     st.header("📸 Gerar Post para Instagram - Vitality Núcleo ✨")
     st.write("""
         Esta ferramenta permite gerar automaticamente posts para o Instagram da clínica de estética. 
-        Siga essas instruções:
-        - Envie uma imagem relacionada ao post.
-        - Descreva brevemente o post ou faça uma pergunta.
-        A ferramenta irá criar um post com base nessas informações.
+        Suba uma imagem e escreva suas instruções para criar um post incrível!
     """)
 
-    # Upload de arquivo de imagem
-    uploaded_image = st.file_uploader("Escolha uma imagem (opcional)", type=["jpg", "png", "jpeg"])
+    image_file = st.file_uploader("Escolha uma imagem...", type=["jpg", "jpeg", "png"])
+    user_input = st.text_area("Instruções do usuário", height=200)
 
-    # Exibir prévia da imagem
-    if uploaded_image:
-        st.image(uploaded_image, caption="Prévia da Imagem", use_column_width=True)
-        st.markdown("Imagem carregada com sucesso.")
-
-    # Exibir histórico de mensagens
-    for message in st.session_state.chat_history:
-        if message["role"] == "user":
-            # Estilo para mensagens do usuário
-            with st.chat_message("user"):
-                st.markdown(f"🗣️ **Usuário**: {message['message']}")
-        else:
-            # Estilo para mensagens do assistente
-            with st.chat_message("assistant"):
-                st.markdown(f"🤖 **Assistente**: {message['message']}")
-
-    # Entrada de mensagem do usuário no final
-    user_input = st.chat_input("Escreva sua mensagem:", key="user_input")
-
-    if user_input:
-        # Adicionar a mensagem do usuário ao histórico
-        user_message = {"role": "user", "message": user_input}
-        st.session_state.chat_history.append(user_message)
-
-        with st.chat_message("user"):
-            st.markdown(f"🗣️ **Usuário**: {user_input}")
-
-        image_path = None
-        if uploaded_image:
-            # Salvar a imagem temporariamente
-            image_path = f"temp_{uploaded_image.name}"
-            with open(image_path, "wb") as f:
-                f.write(uploaded_image.getbuffer())
-
-        # Resposta do assistente
-        with st.chat_message("assistant"):
-            st.markdown("🤖 **Assistente**")
-            with st.spinner("O assistente está digitando..."):
-                post_text, st.session_state.chat_session = generate_instagram_post(image_path, user_input, st.session_state.chat_session)
-
+    if st.button("Gerar Post"):
+        if user_input:
+            post_text, st.session_state.chat_session = generate_instagram_post(image_file, user_input, st.session_state.chat_session)
             st.markdown(post_text)
-
-        # Adicionar a resposta do assistente ao histórico
-        assistant_message = {"role": "assistant", "message": post_text}
-        st.session_state.chat_history.append(assistant_message)
-
-        # Remover arquivo temporário se existir
-        if image_path:
-            Path(image_path).unlink()
+        else:
+            st.warning("Por favor, insira suas instruções para gerar o post.")
 
 if __name__ == '__main__':
     main()

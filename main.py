@@ -35,7 +35,7 @@ def upload_to_gemini(path, mime_type=None):
 
 # Função principal para geração do post
 def generate_instagram_post(image_file, user_input, chat_session=None):
-    file_uploaded = upload_to_gemini(image_file)
+    file_uploaded = upload_to_gemini(image_file) if image_file else None
     
     if chat_session is None:
         # Começar uma nova conversa se não houver sessão ativa
@@ -68,6 +68,14 @@ def main():
         A ferramenta irá criar um post com base nessas informações.
     """)
 
+    # Upload de arquivo de imagem
+    uploaded_image = st.file_uploader("Escolha uma imagem (opcional)", type=["jpg", "png", "jpeg"])
+
+    # Exibir prévia da imagem
+    if uploaded_image:
+        st.image(uploaded_image, caption="Prévia da Imagem", use_column_width=True)
+        st.markdown("Imagem carregada com sucesso.")
+
     # Exibir histórico de mensagens
     for message in st.session_state.chat_history:
         if message["role"] == "user":
@@ -79,42 +87,39 @@ def main():
             with st.chat_message("assistant"):
                 st.markdown(f"🤖 **Assistente**: {message['message']}")
 
-    # Upload de arquivo de imagem
-    uploaded_image = st.file_uploader("Escolha uma imagem", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
-    
-    # Exibir prévia da imagem
-    if uploaded_image:
-        st.image(uploaded_image, caption="Prévia da Imagem", use_column_width=True)
-        st.markdown("Imagem carregada com sucesso.")
-        image_path = f"temp_{uploaded_image.name}"
-        with open(image_path, "wb") as f:
-            f.write(uploaded_image.getbuffer())
-
     # Entrada de mensagem do usuário no final
-    user_input = st.chat_input("Escreva sua mensagem (ou adicione uma imagem 🖇️):", key="user_input")
+    user_input = st.chat_input("Escreva sua mensagem:", key="user_input")
 
-    if user_input and uploaded_image:
+    if user_input:
         # Adicionar a mensagem do usuário ao histórico
         user_message = {"role": "user", "message": user_input}
         st.session_state.chat_history.append(user_message)
-        
+
         with st.chat_message("user"):
             st.markdown(f"🗣️ **Usuário**: {user_input}")
-        
+
+        image_path = None
+        if uploaded_image:
+            # Salvar a imagem temporariamente
+            image_path = f"temp_{uploaded_image.name}"
+            with open(image_path, "wb") as f:
+                f.write(uploaded_image.getbuffer())
+
         # Resposta do assistente
         with st.chat_message("assistant"):
             st.markdown("🤖 **Assistente**")
             with st.spinner("O assistente está digitando..."):
                 post_text, st.session_state.chat_session = generate_instagram_post(image_path, user_input, st.session_state.chat_session)
-            
+
             st.markdown(post_text)
-        
+
         # Adicionar a resposta do assistente ao histórico
         assistant_message = {"role": "assistant", "message": post_text}
         st.session_state.chat_history.append(assistant_message)
 
-        # Remover arquivo temporário
-        Path(image_path).unlink()
+        # Remover arquivo temporário se existir
+        if image_path:
+            Path(image_path).unlink()
 
 if __name__ == '__main__':
     main()

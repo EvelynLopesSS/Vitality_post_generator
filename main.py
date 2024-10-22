@@ -2,6 +2,12 @@ import streamlit as st
 from pathlib import Path
 import google.generativeai as genai
 import os
+import base64
+import time
+
+# Função para carregar imagem e converter para base64
+def load_image_to_base64(image_file):
+    return base64.b64encode(image_file.read()).decode()
 
 # Configuração do modelo e API
 genai.configure(api_key=st.secrets["google"]["api_key"])
@@ -49,78 +55,87 @@ def generate_instagram_post(image_file, user_input, chat_session=None):
     response = chat_session.send_message(user_input)
     return response.text, chat_session
 
+# Inicializar estado da sessão para histórico de mensagens
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
+if 'chat_session' not in st.session_state:
+    st.session_state.chat_session = None
+
 # Interface do Streamlit
 def main():
-    st.header("📸 ChatBot Gerador de Post - Vitality Núcleo ✨")
+    st.image('https://scontent.fjpa14-1.fna.fbcdn.net/v/t39.30808-6/463742144_122103882962567356_4150893980006803591_n.jpg?stp=dst-jpg_s960x960&_nc_cat=102&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=kphI6UaQqb0Q7kNvgE4ebNB&_nc_zt=23&_nc_ht=scontent.fjpa14-1.fna&_nc_gid=A_J0r473NNOGBKSd7kR3mur&oh=00_AYAfU_SmMcK06TzBcZhESVu_u2Ndcqg6WYGhL-5nFkfIiQ&oe=671DB6DA', use_column_width=True)  # Substitua com a URL da imagem que deseja exibir
+    st.header("📸 Gerar Post para Instagram - Vitality Núcleo ✨")
+    st.write("""
+        Esta ferramenta permite gerar automaticamente posts para o Instagram da clínica de estética. 
+        Siga essas instruções:
+        - Envie uma imagem relacionada ao post.
+        - Descreva brevemente o post ou faça uma pergunta.
+        A ferramenta irá criar um post com base nessas informações.
+    """)
 
-    # Variável para armazenar o histórico da conversa na sessão do Streamlit
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
+    # Layout geral: lado esquerdo (upload) e lado direito (chat)
+    col1, col2 = st.columns([1, 2])
 
-    if 'chat_session' not in st.session_state:
-        st.session_state.chat_session = None
+    with col1:
+        st.header("Upload de Imagem")
 
-    uploaded_file = st.file_uploader("Envie uma imagem", type=["png", "jpg", "jpeg"])
-    user_input = st.text_input("Digite sua mensagem")
+        # Upload de arquivo de imagem
+        uploaded_image = st.file_uploader("Escolha uma imagem", type=["jpg", "png", "jpeg"])
+        
+        # Exibir prévia da imagem
+        if uploaded_image:
+            st.image(uploaded_image, caption="Prévia da Imagem", use_column_width=True)
+            st.markdown("Imagem carregada com sucesso.")
 
-    if st.button("Enviar"):
-        if uploaded_file and user_input:
+    with col2:
+        st.header("Instruções")
+        st.markdown("""
+        **Como usar esta aplicação:**
+        - Faça upload da imagem à esquerda.
+        - Digite uma mensagem no campo abaixo para conversar com o assistente.
+        """)
+        
+        # Exibir histórico de mensagens
+        for message in st.session_state.chat_history:
+            if message["role"] == "user":
+                # Estilo para mensagens do usuário
+                with st.chat_message("user"):
+                    st.markdown(f"🗣️ **Usuário**: {message['message']}")
+            else:
+                # Estilo para mensagens do assistente
+                with st.chat_message("assistant"):
+                    st.markdown(f"🤖 **Assistente**: {message['message']}")
+
+        # Entrada de mensagem do usuário
+        user_input = st.chat_input("Escreva sua mensagem:", key="user_input")
+
+        if user_input and uploaded_image:
             # Salvar a imagem temporariamente
-            image_path = f"temp_{uploaded_file.name}"
+            image_path = f"temp_{uploaded_image.name}"
             with open(image_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+                f.write(uploaded_image.getbuffer())
+
+            # Adicionar a mensagem do usuário ao histórico
+            user_message = {"role": "user", "message": user_input}
+            st.session_state.chat_history.append(user_message)
             
-            # Gerar o post e iniciar a sessão de chat
-            with st.spinner('Gerando resposta...'):
-                post_text, chat_session = generate_instagram_post(image_path, user_input, st.session_state.chat_session)
+            with st.chat_message("user"):
+                st.markdown(f"🗣️ **Usuário**: {user_input}")
+            
+            # Resposta do assistente
+            with st.chat_message("assistant"):
+                st.markdown("🤖 **Assistente**")
+                with st.spinner("O assistente está digitando..."):
+                    post_text, st.session_state.chat_session = generate_instagram_post(image_path, user_input, st.session_state.chat_session)
                 
-                # Atualizar o histórico com a resposta gerada
-                st.session_state.chat_history.append({"role": "user", "message": user_input})
-                st.session_state.chat_history.append({"role": "model", "message": post_text})
-                
-                # Salvar a sessão de chat
-                st.session_state.chat_session = chat_session
+                st.markdown(post_text)
+            
+            # Adicionar a resposta do assistente ao histórico
+            assistant_message = {"role": "assistant", "message": post_text}
+            st.session_state.chat_history.append(assistant_message)
 
-                # Remover arquivo temporário
-                Path(image_path).unlink()
-        else:
-            st.warning("Por favor, envie uma imagem e insira a descrição.")
-
-    # Exibir o chat como uma conversa
-    if st.session_state.chat_history:
-        st.write("---")
-        st.subheader("Conversa:")
-        for msg in st.session_state.chat_history:
-            if msg["role"] == "user":
-                st.write(f"**Você**: {msg['message']}")
-            else:
-                st.write(f"**Bot**: {msg['message']}")
-
-    # Continuar a conversa
-    if st.session_state.chat_session:
-        modification_request = st.text_input("Pedir modificação ou continuar conversa", key="modification_input")
-
-        if st.button("Continuar"):
-            if modification_request:
-                with st.spinner('Gerando nova versão...'):
-                    # Adicionar a nova solicitação ao histórico
-                    st.session_state.chat_history.append({"role": "user", "message": modification_request})
-                    
-                    # Gerar uma nova resposta levando em conta o histórico anterior
-                    complete_history = [{"role": "user", "parts": [msg["message"]]} if msg["role"] == "user"
-                                        else {"role": "model", "parts": [msg["message"]]}
-                                        for msg in st.session_state.chat_history]
-                    
-                    chat_session = model.start_chat(history=complete_history)
-                    response = chat_session.send_message(modification_request)
-                    
-                    # Atualizar o histórico com a resposta gerada
-                    st.session_state.chat_history.append({"role": "model", "message": response.text})
-                    
-                    st.subheader("Texto Modificado:")
-                    st.write(response.text)
-            else:
-                st.warning("Insira uma solicitação de modificação.")
+            # Remover arquivo temporário
+            Path(image_path).unlink()
 
 if __name__ == '__main__':
     main()

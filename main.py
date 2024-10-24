@@ -64,8 +64,8 @@ def main():
         Esta ferramenta permite gerar automaticamente posts para o Instagram da clínica de estética. 
         Siga essas instruções:
         - Envie uma imagem relacionada ao post.
-        - Descreva brevemente o post ou faça uma pergunta.
-        A ferramenta irá criar um post com base nessas informações.
+        - Descreva brevemente sobre o que deve ser o conteúdo do post, faça uma pergunta ou simplesmente escreva "faça um post sobre isso".
+        A ferramenta irá criar um post com base nessas informações, você pode conversar pedindo alterações e modificações.
     """)
 
     # Upload de arquivo de imagem
